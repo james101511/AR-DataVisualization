@@ -4,22 +4,24 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using LitJson;
+using UnityEngine.Networking;
 
 public class GPS : MonoBehaviour
 {
-	List<string> places = new List<string>() { "new_new_emote_1903", "new_new_emote_1902", "new_new_emote_1904","new_new_emote_1908","new_new_emote_1705","new_new_emote_1907" };
+	List<string> places = new List<string>() { "new_new_emote_1903", "new_new_emote_1902", "new_new_emote_1904", "new_new_emote_1908", "new_new_emote_1705", "new_new_emote_1907" };
 	List<float> Latitudes = new List<float>() { 54.97304295188f, 54.9734549487624f, 54.972397607978f, 54.9721388049708f, 54.9718949244835f, 54.97457f };
-	List<float> Longitudes = new List<float>() { -1.62198476063258f, -1.62154347697917f, -1.6225219524328f,-1.62310237397882f, -1.62269849919361f,-1.62482f};
+	List<float> Longitudes = new List<float>() { -1.62198476063258f, -1.62154347697917f, -1.6225219524328f, -1.62310237397882f, -1.62269849919361f, -1.62482f };
 	List<int> flag = new List<int>();
 	List<GameObject> models = new List<GameObject>();
 	List<String> existSensors = new List<String>();
 	public static GPS Instance { set; get; }
 	public float currentLatitude;
 	public float currentLongitude;
+	private string jsonString;
+	private JsonData itemData;
 	public GameObject canvas;
-
 	public GameObject camera;
-
 	private GameObject frameRateTextObject;
 	private GameObject distanceTextObject;
 	private GameObject TargetTextObject;
@@ -37,7 +39,6 @@ public class GPS : MonoBehaviour
 		TargetTextObject = GameObject.FindGameObjectWithTag("TargetPosition");
 		coordinatesObject = GameObject.FindGameObjectWithTag("coordinates");
 
-
 		Instance = this;
 
 		for (int i = 0; i < places.Count; i++)
@@ -45,11 +46,7 @@ public class GPS : MonoBehaviour
 			models.Add(Instantiate(canvas));
 			flag.Add(0);
 		}
-        
-		//readData.sensorName = places[0];
-        //readData.token = true;
-       
-
+  
 		radius = 15f;
 
 		StartCoroutine(StartLocationService());
@@ -62,6 +59,42 @@ public class GPS : MonoBehaviour
 		frameRateTextObject.GetComponent<Text>().text = "FPS:" + (Time.frameCount / Time.time).ToString();
 
 	}
+	public IEnumerator getData(int index, String sensorName)
+	{
+
+		string getCountriesUrl = "http://uoweb1.ncl.ac.uk/api/v1/sensor/live.json?sensor_name=" + sensorName + "&api_key=a1vvpmt4zk0o46v7veh29p8f3kqkuz611edwez2usenlnm8u018w28ft3cc6kughg5i7fj2xirxu63ap9mz6ghk0j7";
+
+
+		using (UnityWebRequest www = UnityWebRequest.Get(getCountriesUrl))
+		{
+			//www.chunkedTransfer = false;
+			yield return www.Send();
+
+			if (www.isNetworkError || www.isHttpError)
+			{
+				Debug.Log(www.error);
+			}
+			else
+			{
+				if (www.isDone)
+				{
+					jsonString = System.Text.Encoding.UTF8.GetString(www.downloadHandler.data);
+					itemData = JsonMapper.ToObject(jsonString);
+					GameObject.FindGameObjectWithTag("sensorName").GetComponent<Text>().text = sensorName;
+					models[index].transform.Find("TemperaturePanel/T Value").GetComponent<Text>().text = (itemData[0]["data"]["Temperature"]["data"][0]).ToString() + " Celsius";
+					models[index].transform.Find("NO2Panel/NO2 Value").GetComponent<Text>().text = (itemData[0]["data"]["NO2"]["data"][0]).ToString().Substring(0, 5) + " ugm -3";
+					models[index].transform.Find("HumidityPanel/H Value").GetComponent<Text>().text = (itemData[0]["data"]["Humidity"]["data"][0]).ToString() + " %";
+					models[index].transform.Find("COPanel/CO Value").GetComponent<Text>().text = (itemData[0]["data"]["CO"]["data"][0]).ToString().Substring(0, 6) + " ugm -3";
+					models[index].transform.Find("SoundPanel/S Value").GetComponent<Text>().text = (itemData[0]["data"]["Sound"]["data"][0]).ToString() + " db";
+					models[index].transform.Find("NOPanel/NO Value").GetComponent<Text>().text = (itemData[0]["data"]["NO"]["data"][0]).ToString().Substring(0, 5) + " ugm -3";
+
+				}
+			}
+		}
+
+
+	}
+
 
 	private float Calc(float referenceLatitude, float referenceLongitude, float currentLatitude, float currentLongitude)
 	{
@@ -87,6 +120,7 @@ public class GPS : MonoBehaviour
 
 		while (true)
 		{
+
 			List<float> distances = new List<float>();
 			float nearby;
 			int index;
@@ -133,36 +167,20 @@ public class GPS : MonoBehaviour
 			{
 				if (flag[index] != 1)
 				{
+					GameObject.FindGameObjectWithTag("sensorName").GetComponent<Text>().text = places[index];
+
+
 					models[index].transform.position = camera.transform.position + camera.transform.forward * distancee;
 					flag[index] = 1;
 					models[index].SetActive(true);
-
-
-                    readData.sensorName = places[index];
-                    var tValue = GameObject.FindGameObjectWithTag("TValue").GetComponent<Text>();
-                    var noTwoValue = GameObject.FindGameObjectWithTag("NO2").GetComponent<Text>();
-                    var noValue = GameObject.FindGameObjectWithTag("NO").GetComponent<Text>();
-                    var hValue = GameObject.FindGameObjectWithTag("Humidity").GetComponent<Text>();
-                    var sValue = GameObject.FindGameObjectWithTag("Sound").GetComponent<Text>();
-                    var coValue = GameObject.FindGameObjectWithTag("CO").GetComponent<Text>();
-                  
-					tValue.text = "reading...";
-                    noTwoValue.text = "reading...";
-                    noValue.text = "reading...";
-                    hValue.text = "reading...";
-                    sValue.text = "reading...";
-                    coValue.text = "reading...";
+					StartCoroutine(getData(index, places[index]));
 
 				}
 				else
 				{
 					models[index].SetActive(true);
+                	Debug.Log("you are here");
 
-
-                    readData.sensorName = places[index];
-                    readData.token = true;
-
-                    Debug.Log("you are here");
 				}
 
 
@@ -174,14 +192,9 @@ public class GPS : MonoBehaviour
 			else
 			{
 				Debug.Log("Not In range");
-				readData.token = false;
-				models[index].SetActive(false);
-
-
-			}
-
-
-
+                models[index].SetActive(false);
+    		}
+   
 			Input.location.Stop();
 		}
 
