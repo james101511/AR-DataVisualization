@@ -46,7 +46,7 @@ public class GPS : MonoBehaviour
 			models.Add(Instantiate(canvas));
 			flag.Add(0);
 		}
-  
+
 		radius = 15f;
 
 		StartCoroutine(StartLocationService());
@@ -55,8 +55,8 @@ public class GPS : MonoBehaviour
 
 	private void Update()
 	{
-		frameRateTextObject = GameObject.FindGameObjectWithTag("FrameRate");
-		frameRateTextObject.GetComponent<Text>().text = "FPS:" + (Time.frameCount / Time.time).ToString();
+		//frameRateTextObject = GameObject.FindGameObjectWithTag("FrameRate");
+		//frameRateTextObject.GetComponent<Text>().text = "FPS:" + (Time.frameCount / Time.time).ToString();
 
 	}
 	public IEnumerator getData(int index, String sensorName)
@@ -80,7 +80,7 @@ public class GPS : MonoBehaviour
 				{
 					jsonString = System.Text.Encoding.UTF8.GetString(www.downloadHandler.data);
 					itemData = JsonMapper.ToObject(jsonString);
-					GameObject.FindGameObjectWithTag("sensorName").GetComponent<Text>().text = sensorName;
+					models[index].transform.Find("sensorName").GetComponent<Text>().text = sensorName;
 					models[index].transform.Find("TemperaturePanel/T Value").GetComponent<Text>().text = (itemData[0]["data"]["Temperature"]["data"][0]).ToString() + " Celsius";
 					models[index].transform.Find("NO2Panel/NO2 Value").GetComponent<Text>().text = (itemData[0]["data"]["NO2"]["data"][0]).ToString().Substring(0, 5) + " ugm -3";
 					models[index].transform.Find("HumidityPanel/H Value").GetComponent<Text>().text = (itemData[0]["data"]["Humidity"]["data"][0]).ToString() + " %";
@@ -167,9 +167,7 @@ public class GPS : MonoBehaviour
 			{
 				if (flag[index] != 1)
 				{
-					GameObject.FindGameObjectWithTag("sensorName").GetComponent<Text>().text = places[index];
-
-
+					               
 					models[index].transform.position = camera.transform.position + camera.transform.forward * distancee;
 					flag[index] = 1;
 					models[index].SetActive(true);
